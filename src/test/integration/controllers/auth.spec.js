@@ -12,7 +12,7 @@ describe('Auth controller', () => {
   let app, server, signupResponse
 
   beforeAll(async () => {
-    ; ({ app, server } = await serverInit())
+    ;({ app, server } = await serverInit())
   })
 
   beforeEach(async () => {
@@ -112,6 +112,37 @@ describe('Auth controller', () => {
       const response = await app.patch('/auth/reset-password/invalid-token').send({ password: 'valid_pass1' })
 
       expectError(400, errors.BAD_RESET_TOKEN, response)
+    })
+  })
+
+  describe('Google Auth endpoint', () => {
+    it('should authenticate user with valid Google token', async () => {
+      const mockVerifyIdToken = jest.fn().mockResolvedValue({
+        getPayload: () => ({
+          email: 'googleuser@gmail.com',
+          given_name: 'Google',
+          family_name: 'User'
+        })
+      })
+
+      const { OAuth2Client } = require('google-auth-library')
+      OAuth2Client.prototype.verifyIdToken = mockVerifyIdToken
+
+      const response = await app.post('/auth/google-auth').send({ token: 'valid-google-token' })
+
+      expect(response.status).toBe(200)
+      expect(response.body).toHaveProperty('accessToken')
+      expect(mockVerifyIdToken).toHaveBeenCalled()
+    })
+
+    it('should throw error for invalid Google token', async () => {
+      const mockVerifyIdToken = jest.fn().mockRejectedValue(new Error('Invalid token'))
+      const { OAuth2Client } = require('google-auth-library')
+      OAuth2Client.prototype.verifyIdToken = mockVerifyIdToken
+
+      const response = await app.post('/auth/google-auth').send({ token: 'invalid-token' })
+
+      expect(response.status).toBe(500)
     })
   })
 })

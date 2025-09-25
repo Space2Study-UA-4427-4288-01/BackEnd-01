@@ -13,6 +13,12 @@ const emailSubject = require('~/consts/emailSubject')
 const {
   tokenNames: { REFRESH_TOKEN, RESET_TOKEN, CONFIRM_TOKEN }
 } = require('~/consts/auth')
+const { OAuth2Client } = require('google-auth-library')
+const {
+  config: { GMAIL_CLIENT_ID }
+} = require('~/configs/config')
+
+const client = new OAuth2Client(GMAIL_CLIENT_ID)
 
 const authService = {
   signup: async (role, firstName, lastName, email, password, language) => {
@@ -34,7 +40,7 @@ const authService = {
       throw createError(401, USER_NOT_FOUND)
     }
 
-    const checkedPassword = (password === user.password) || isFromGoogle
+    const checkedPassword = password === user.password || isFromGoogle
 
     if (!checkedPassword) {
       throw createError(401, INCORRECT_CREDENTIALS)
@@ -109,6 +115,28 @@ const authService = {
     await emailService.sendEmail(email, emailSubject.SUCCESSFUL_PASSWORD_RESET, language, {
       firstName
     })
+  },
+
+  googleAuth: async (idToken) => {
+    const ticket = await client.verifyIdToken({
+      idToken: idToken,
+      audience: GMAIL_CLIENT_ID
+    })
+
+    const payload = ticket.getPayload()
+    const { email, given_name: firstName, family_name: lastName } = payload
+
+    let user = await getUserByEmail(email)
+
+    if (!user) {
+      const safeLastName = lastName || firstName || 'User'
+      const safePassword = 'google_auth_user'
+
+      user = await createUser('student', firstName || 'Google', safeLastName, email, safePassword, 'en')
+      await privateUpdateUser(user._id, { isEmailConfirmed: true })
+    }
+
+    return authService.login(email, '', true)
   }
 }
 
