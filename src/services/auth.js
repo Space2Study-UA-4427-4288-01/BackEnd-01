@@ -7,7 +7,10 @@ const {
   INCORRECT_CREDENTIALS,
   BAD_RESET_TOKEN,
   BAD_REFRESH_TOKEN,
-  USER_NOT_FOUND
+  USER_NOT_FOUND,
+  INVALID_TOKEN_ISSUER,
+  EMAIL_NOT_VERIFIED,
+  MISSING_SUB_CLAIM
 } = require('~/consts/errors')
 const emailSubject = require('~/consts/emailSubject')
 const {
@@ -125,6 +128,19 @@ const authService = {
     })
 
     const payload = ticket.getPayload()
+
+    if (payload.iss !== 'accounts.google.com' && payload.iss !== 'https://accounts.google.com') {
+      throw createError(422, INVALID_TOKEN_ISSUER)
+    }
+
+    if (!payload.email_verified) {
+      throw createError(422, EMAIL_NOT_VERIFIED)
+    }
+
+    if (!payload.sub) {
+      throw createError(422, MISSING_SUB_CLAIM)
+    }
+
     const { email, given_name: firstName, family_name: lastName } = payload
 
     let user = await getUserByEmail(email)

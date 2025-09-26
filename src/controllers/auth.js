@@ -87,15 +87,44 @@ const updatePassword = async (req, res) => {
 }
 
 const googleAuth = async (req, res) => {
-  const { token } = req.body
-  const tokens = await authService.googleAuth(token)
+  try {
+    const { token } = req.body
 
-  res.cookie(ACCESS_TOKEN, tokens.accessToken, COOKIE_OPTIONS)
-  res.cookie(REFRESH_TOKEN, tokens.refreshToken, COOKIE_OPTIONS)
+    if (!token) {
+      return res.status(422).json({
+        error: 'MISSING_TOKEN',
+        message: 'Google token is required'
+      })
+    }
 
-  delete tokens.refreshToken
+    const tokens = await authService.googleAuth(token)
 
-  res.status(200).json(tokens)
+    res.cookie(ACCESS_TOKEN, tokens.accessToken, COOKIE_OPTIONS)
+    res.cookie(REFRESH_TOKEN, tokens.refreshToken, COOKIE_OPTIONS)
+
+    delete tokens.refreshToken
+
+    res.status(200).json(tokens)
+  } catch (error) {
+    if (error.status === 422) {
+      return res.status(422).json({
+        error: error.code || 'INVALID_TOKEN',
+        message: error.message
+      })
+    }
+
+    if (error.message && (error.message.includes('Token used too early') || error.message.includes('Invalid token'))) {
+      return res.status(422).json({
+        error: 'TOKEN_NOT_VALID',
+        message: 'Google token is not valid'
+      })
+    }
+
+    return res.status(401).json({
+      error: 'AUTHENTICATION_FAILED',
+      message: 'Google authentication failed'
+    })
+  }
 }
 
 module.exports = {
