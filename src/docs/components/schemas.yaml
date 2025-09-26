@@ -1,0 +1,125 @@
+components:
+  schemas:
+    # Requests
+    SignupRequest:
+      type: object
+      required:
+        - email
+        - password
+        - firstName
+        - lastName
+      properties:
+        email:
+          type: string
+          format: email
+          example: "user@example.com"
+        password:
+          type: string
+          minLength: 6
+          example: "password123"
+        firstName:
+          type: string
+          example: "John"
+        lastName:
+          type: string
+          example: "Doe"
+        role:
+          type: string
+          enum: [student, tutor]
+          example: "student"
+
+    LoginRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          example: "user@example.com"
+        password:
+          type: string
+          example: "password123"
+
+    GoogleAuthRequest:
+      type: object
+      required:
+        - token
+      properties:
+        token:
+          type: string
+          description: Google OAuth token
+          example: "eyJhbGciOiJSUzI1NiIsImtpZCI6IjdkYzBiMjVhM..."
+
+    ForgotPasswordRequest:
+      type: object
+      required:
+        - email
+      properties:
+        email:
+          type: string
+          format: email
+          example: "user@example.com"
+
+    ResetPasswordRequest:
+      type: object
+      required:
+        - password
+      properties:
+        password:
+          type: string
+          minLength: 6
+          example: "newpassword123"
+
+    # Answers
+    AuthResponse:
+      type: object
+      properties:
+        accessToken:
+          type: string
+          description: JWT access token
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        user:
+          type: object
+          properties:
+            id:
+              type: string
+              example: "507f1f77bcf86cd799439011"
+            email:
+              type: string
+              example: "user@example.com"
+            firstName:
+              type: string
+              example: "John"
+            lastName:
+              type: string
+              example: "Doe"
+            role:
+              type: string
+              example: "student"
+
+    MessageResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: "Password reset email sent successfully"
+
+    RefreshTokenResponse:
+      type: object
+      properties:
+        accessToken:
+          type: string
+          description: New JWT access token
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+
+    ErrorResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: "Invalid credentials"
+        status:
+          type: integer
+          example: 400
