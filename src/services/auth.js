@@ -19,6 +19,7 @@ const {
 } = require('~/configs/config')
 
 const client = new OAuth2Client(GMAIL_CLIENT_ID)
+const crypto = require('crypto')
 
 const authService = {
   signup: async (role, firstName, lastName, email, password, language) => {
@@ -130,7 +131,7 @@ const authService = {
 
     if (!user) {
       const safeLastName = lastName || firstName || 'User'
-      const safePassword = 'google_auth_user'
+      const safePassword = crypto.randomBytes(32).toString('hex')
 
       user = await createUser('student', firstName || 'Google', safeLastName, email, safePassword, 'en')
       await privateUpdateUser(user._id, { isEmailConfirmed: true })
