@@ -1,32 +1,42 @@
 components:
   schemas:
-    # Requests
+    #Requests
     SignupRequest:
       type: object
       required:
-        - email
-        - password
         - firstName
         - lastName
+        - email
+        - role
+        - password
       properties:
-        email:
-          type: string
-          format: email
-          example: "user@example.com"
-        password:
-          type: string
-          minLength: 6
-          example: "password123"
         firstName:
           type: string
+          minLength: 1
+          maxLength: 30
+          pattern: "^[a-zа-яєії]+$"
           example: "John"
         lastName:
           type: string
+          minLength: 1
+          maxLength: 30
+          pattern: "^[a-zа-яєії]+$"
           example: "Doe"
+        email:
+          type: string
+          format: email
+          pattern: "^([a-z\\d]+([._-][a-z\\d]+)*)@([a-z\\d]+([.-][a-z\\d]+)*\\.[a-z]{2,})$"
+          example: "user@example.com"
         role:
           type: string
-          enum: [student, tutor]
+          enum: [student, tutor, admin, superadmin]
           example: "student"
+        password:
+          type: string
+          minLength: 8
+          maxLength: 25
+          pattern: "^(?=.*\\d)(?=.*[a-zа-яєії])\\S+$"
+          example: "Password123"
 
     LoginRequest:
       type: object
@@ -40,7 +50,7 @@ components:
           example: "user@example.com"
         password:
           type: string
-          example: "password123"
+          example: "Password123"
 
     GoogleAuthRequest:
       type: object
@@ -69,49 +79,28 @@ components:
       properties:
         password:
           type: string
-          minLength: 6
-          example: "newpassword123"
+          minLength: 8
+          maxLength: 25
+          pattern: "^(?=.*\\d)(?=.*[a-zа-яєії])\\S+$"
+          example: "NewPassword123"
 
-    # Answers
+    # Responses
+    SignupResponse:
+      type: object
+      properties:
+        userId:
+          type: string
+          example: "507f1f77bcf86cd799439011"
+        userEmail:
+          type: string
+          example: "user@example.com"
+
     AuthResponse:
       type: object
       properties:
         accessToken:
           type: string
           description: JWT access token
-          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-        user:
-          type: object
-          properties:
-            id:
-              type: string
-              example: "507f1f77bcf86cd799439011"
-            email:
-              type: string
-              example: "user@example.com"
-            firstName:
-              type: string
-              example: "John"
-            lastName:
-              type: string
-              example: "Doe"
-            role:
-              type: string
-              example: "student"
-
-    MessageResponse:
-      type: object
-      properties:
-        message:
-          type: string
-          example: "Password reset email sent successfully"
-
-    RefreshTokenResponse:
-      type: object
-      properties:
-        accessToken:
-          type: string
-          description: New JWT access token
           example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
 
     ErrorResponse:

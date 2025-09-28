@@ -16,7 +16,7 @@
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/AuthResponse'
+              $ref: '#/components/schemas/SignupResponse'
       '400':
         description: Validation error
         content:
@@ -99,12 +99,8 @@
     tags:
       - Authentication
     responses:
-      '200':
+      '204':
         description: Logout successful
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/MessageResponse'
 
 /auth/refresh:
   get:
@@ -115,10 +111,15 @@
     responses:
       '200':
         description: Token refreshed successfully
+        headers:
+          Set-Cookie:
+            description: Sets access and refresh token cookies
+            schema:
+              type: string
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/RefreshTokenResponse'
+              $ref: '#/components/schemas/AuthResponse'
       '401':
         description: Invalid or expired refresh token
         content:
@@ -139,12 +140,8 @@
           schema:
             $ref: '#/components/schemas/ForgotPasswordRequest'
     responses:
-      '200':
+      '204':
         description: Reset email sent successfully
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/MessageResponse'
       '404':
         description: User not found
         content:
@@ -172,12 +169,8 @@
           schema:
             $ref: '#/components/schemas/ResetPasswordRequest'
     responses:
-      '200':
+      '204':
         description: Password reset successful
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/MessageResponse'
       '400':
         description: Invalid or expired token
         content:
