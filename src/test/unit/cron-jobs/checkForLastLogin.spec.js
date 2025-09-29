@@ -2,10 +2,10 @@ const userService = require('~/services/user')
 const emailService = require('~/services/email')
 const emailSubject = require('~/consts/emailSubject')
 const { checkLastLogin } = require('~/cron-jobs/checkForLastLogin')
+const { oneDayInMs } = require('~/consts/auth')
 
-const DAYS_TO_SEND_EMAIL = process.env.DAYS_TO_SEND_EMAIL ? Number(process.env.DAYS_TO_SEND_EMAIL) : 172
-const DAYS_TO_DELETE_USER = process.env.DAYS_TO_DELETE_USER ? Number(process.env.DAYS_TO_DELETE_USER) : 180
-const MS_IN_DAY = 24 * 60 * 60 * 1000
+const DAYS_TO_SEND_EMAILS = 173
+const DAYS_TO_DELETE_USER = 180
 
 const mockedUser = {
   email: 'cat@gmail.com',
@@ -27,7 +27,6 @@ describe('checkForLastUserLogin cron-job', () => {
   beforeEach(() => {
     const mockedNow = new Date('2023-08-23T00:00:00.000Z')
     const RealDate = Date
-
     jest.spyOn(global, 'Date').mockImplementation(
       ((Ctor) =>
         function MockDate(...args) {
@@ -35,14 +34,13 @@ describe('checkForLastUserLogin cron-job', () => {
           return new Ctor(...args)
         })(RealDate)
     )
-
     Object.assign(global.Date, {
       ...RealDate,
       now: jest.fn(() => mockedNow.getTime())
     })
 
-    const loginForEmail = new Date(mockedNow.getTime() - DAYS_TO_SEND_EMAIL * MS_IN_DAY - 1)
-    const loginForDelete = new Date(mockedNow.getTime() - DAYS_TO_DELETE_USER * MS_IN_DAY - 1)
+    const loginForEmail = new Date(mockedNow.getTime() - DAYS_TO_SEND_EMAILS * oneDayInMs)
+    const loginForDelete = new Date(mockedNow.getTime() - DAYS_TO_DELETE_USER * oneDayInMs)
 
     mockedUsersList = { items: [{ ...mockedUser, lastLogin: loginForEmail }] }
     userService.getUsers = jest.fn(() => mockedUsersList)
@@ -80,7 +78,8 @@ describe('checkForLastUserLogin cron-job', () => {
   })
 
   it('should return array of undefined if user lastLogin date is less than days to send email', async () => {
-    const optimalDate = new Date(global.Date.now() - (DAYS_TO_SEND_EMAIL - 1) * MS_IN_DAY)
+    const mockedNow = new Date(Date.now())
+    const optimalDate = new Date(mockedNow.getTime() - (DAYS_TO_SEND_EMAILS - 1) * oneDayInMs)
     mockedUsersList = { items: [{ ...mockedUser, lastLogin: optimalDate }] }
     userService.getUsers.mockImplementation(() => mockedUsersList)
 
