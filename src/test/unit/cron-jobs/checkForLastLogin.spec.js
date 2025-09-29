@@ -5,6 +5,7 @@ const { checkLastLogin } = require('~/cron-jobs/checkForLastLogin')
 
 const DAYS_TO_SEND_EMAIL = process.env.DAYS_TO_SEND_EMAIL ? Number(process.env.DAYS_TO_SEND_EMAIL) : 172
 const DAYS_TO_DELETE_USER = process.env.DAYS_TO_DELETE_USER ? Number(process.env.DAYS_TO_DELETE_USER) : 180
+const MS_IN_DAY = 24 * 60 * 60 * 1000
 
 const mockedUser = {
   email: 'cat@gmail.com',
@@ -20,13 +21,13 @@ jest.mock('~/services/email', () => ({
   sendEmail: jest.fn()
 }))
 
-const daysAgo = (baseDate, days) => new Date(baseDate.getTime() - days * 24 * 60 * 60 * 1000)
+const daysAgo = (baseDate, days) => new Date(baseDate.getTime() - days * MS_IN_DAY)
 
 let mockedUsersList
 
 describe('checkForLastUserLogin cron-job', () => {
   beforeEach(() => {
-    const mockedNow = new Date('2023-08-23T12:00:00.000Z')
+    const mockedNow = new Date('2023-08-23T00:00:00.000Z')
     const RealDate = Date
     jest.spyOn(global, 'Date').mockImplementation(
       ((Ctor) =>
@@ -40,8 +41,8 @@ describe('checkForLastUserLogin cron-job', () => {
       now: jest.fn(() => mockedNow.getTime())
     })
 
-    const loginForEmail = daysAgo(mockedNow, DAYS_TO_SEND_EMAIL)
-    const loginForDelete = daysAgo(mockedNow, DAYS_TO_DELETE_USER)
+    const loginForEmail = new Date(mockedNow.getTime() - DAYS_TO_SEND_EMAIL * MS_IN_DAY - 1)
+    const loginForDelete = new Date(mockedNow.getTime() - DAYS_TO_DELETE_USER * MS_IN_DAY)
 
     mockedUsersList = { items: [{ ...mockedUser, lastLogin: loginForEmail }] }
     userService.getUsers = jest.fn(() => mockedUsersList)
