@@ -1,0 +1,114 @@
+components:
+  schemas:
+    #Requests
+    SignupRequest:
+      type: object
+      required:
+        - firstName
+        - lastName
+        - email
+        - role
+        - password
+      properties:
+        firstName:
+          type: string
+          minLength: 1
+          maxLength: 30
+          pattern: "^[a-zа-яєії]+$"
+          example: "John"
+        lastName:
+          type: string
+          minLength: 1
+          maxLength: 30
+          pattern: "^[a-zа-яєії]+$"
+          example: "Doe"
+        email:
+          type: string
+          format: email
+          pattern: "^([a-z\\d]+([._-][a-z\\d]+)*)@([a-z\\d]+([.-][a-z\\d]+)*\\.[a-z]{2,})$"
+          example: "user@example.com"
+        role:
+          type: string
+          enum: [student, tutor, admin, superadmin]
+          example: "student"
+        password:
+          type: string
+          minLength: 8
+          maxLength: 25
+          pattern: "^(?=.*\\d)(?=.*[a-zа-яєії])\\S+$"
+          example: "Password123"
+
+    LoginRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          example: "user@example.com"
+        password:
+          type: string
+          example: "Password123"
+
+    GoogleAuthRequest:
+      type: object
+      required:
+        - token
+      properties:
+        token:
+          type: string
+          description: Google OAuth token
+          example: "eyJhbGciOiJSUzI1NiIsImtpZCI6IjdkYzBiMjVhM..."
+
+    ForgotPasswordRequest:
+      type: object
+      required:
+        - email
+      properties:
+        email:
+          type: string
+          format: email
+          example: "user@example.com"
+
+    ResetPasswordRequest:
+      type: object
+      required:
+        - password
+      properties:
+        password:
+          type: string
+          minLength: 8
+          maxLength: 25
+          pattern: "^(?=.*\\d)(?=.*[a-zа-яєії])\\S+$"
+          example: "NewPassword123"
+
+    # Responses
+    SignupResponse:
+      type: object
+      properties:
+        userId:
+          type: string
+          example: "507f1f77bcf86cd799439011"
+        userEmail:
+          type: string
+          example: "user@example.com"
+
+    AuthResponse:
+      type: object
+      properties:
+        accessToken:
+          type: string
+          description: JWT access token
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+
+    ErrorResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: "Invalid credentials"
+        status:
+          type: integer
+          example: 400

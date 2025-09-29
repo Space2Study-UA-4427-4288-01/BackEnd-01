@@ -8,6 +8,7 @@ const {
 const router = require('~/routes')
 const { createNotFoundError } = require('~/utils/errorsHelper')
 const errorMiddleware = require('~/middlewares/error')
+const { swaggerSpec, swaggerUi } = require('~/configs/swagger')
 
 const initialization = (app) => {
   app.use(express.json({ limit: '10mb' }))
@@ -21,6 +22,13 @@ const initialization = (app) => {
       allowedHeaders: 'Content-Type, Authorization'
     })
   )
+
+  app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec))
+
+  app.get('/api/docs.json', (req, res) => {
+    res.setHeader('Content-Type', 'application/json')
+    res.send(swaggerSpec)
+  })
 
   app.use('/', router)
 

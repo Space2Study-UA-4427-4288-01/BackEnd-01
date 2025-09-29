@@ -1,0 +1,179 @@
+/auth/signup:
+  post:
+    summary: Register new user
+    description: Creates a new user account
+    tags:
+      - Authentication
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/SignupRequest'
+    responses:
+      '201':
+        description: User created successfully
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SignupResponse'
+      '400':
+        description: Validation error
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ErrorResponse'
+      '409':
+        description: User already exists
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ErrorResponse'
+
+/auth/login:
+  post:
+    summary: User login
+    description: Authenticates user with email and password
+    tags:
+      - Authentication
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/LoginRequest'
+    responses:
+      '200':
+        description: Login successful
+        headers:
+          Set-Cookie:
+            description: Sets access and refresh token cookies
+            schema:
+              type: string
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthResponse'
+      '401':
+        description: Invalid credentials
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ErrorResponse'
+
+/auth/google-auth:
+  post:
+    summary: Google OAuth authentication
+    description: Authenticates user using Google OAuth token
+    tags:
+      - Authentication
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/GoogleAuthRequest'
+    responses:
+      '200':
+        description: Authentication successful
+        headers:
+          Set-Cookie:
+            description: Sets access and refresh token cookies
+            schema:
+              type: string
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthResponse'
+      '400':
+        description: Invalid token
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ErrorResponse'
+
+/auth/logout:
+  post:
+    summary: User logout
+    description: Logs out user and clears authentication cookies
+    tags:
+      - Authentication
+    responses:
+      '204':
+        description: Logout successful
+
+/auth/refresh:
+  get:
+    summary: Refresh access token
+    description: Gets new access token using refresh token from cookies
+    tags:
+      - Authentication
+    responses:
+      '200':
+        description: Token refreshed successfully
+        headers:
+          Set-Cookie:
+            description: Sets access and refresh token cookies
+            schema:
+              type: string
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthResponse'
+      '401':
+        description: Invalid or expired refresh token
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ErrorResponse'
+
+/auth/forgot-password:
+  post:
+    summary: Send password reset email
+    description: Sends password reset link to user's email
+    tags:
+      - Authentication
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ForgotPasswordRequest'
+    responses:
+      '204':
+        description: Reset email sent successfully
+      '404':
+        description: User not found
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ErrorResponse'
+
+/auth/reset-password/{token}:
+  patch:
+    summary: Reset password
+    description: Resets user password using reset token
+    tags:
+      - Authentication
+    parameters:
+      - in: path
+        name: token
+        required: true
+        schema:
+          type: string
+        description: Password reset token
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ResetPasswordRequest'
+    responses:
+      '204':
+        description: Password reset successful
+      '400':
+        description: Invalid or expired token
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ErrorResponse'
