@@ -9,6 +9,7 @@ on:
 jobs:
   Test_DEV:
     runs-on: ubuntu-latest
+
     services:
       mongodb:
         image: mongo:6
@@ -19,6 +20,20 @@ jobs:
           --health-interval=10s
           --health-timeout=5s
           --health-retries=5
+
+    env:
+      NODE_ENV: test
+      SERVER_PORT: 8080
+      MONGODB_URL: mongodb://127.0.0.1:27017/test
+      JWT_ACCESS_SECRET: test_access_secret
+      JWT_REFRESH_SECRET: test_refresh_secret
+      JWT_RESET_SECRET: test_reset_secret
+      JWT_CONFIRM_SECRET: test_confirm_secret
+      JWT_ACCESS_EXPIRES_IN: 1h
+      JWT_REFRESH_EXPIRES_IN: 7d
+      JWT_RESET_EXPIRES_IN: 1h
+      JWT_CONFIRM_EXPIRES_IN: 1d
+
     steps:
       - name: 'Checkout the Repo'
         uses: actions/checkout@v3
@@ -35,24 +50,24 @@ jobs:
         run: npm run test
         env:
           NODE_OPTIONS: --max_old_space_size=4096
-          MONGODB_URL: mongodb://127.0.0.1:27017/test
-          JWT_ACCESS_SECRET: ${{secrets.JWT_ACCESS_SECRET}}
-          JWT_REFRESH_SECRET: ${{secrets.JWT_REFRESH_SECRET}}
-          JWT_RESET_SECRET: ${{secrets.JWT_RESET_SECRET}}
-          JWT_CONFIRM_SECRET: ${{secrets.JWT_CONFIRM_SECRET}}
-          JWT_ACCESS_EXPIRES_IN: ${{secrets.JWT_ACCESS_EXPIRES_IN}}
-          JWT_REFRESH_EXPIRES_IN: ${{secrets.JWT_REFRESH_EXPIRES_IN}}
-          JWT_RESET_EXPIRES_IN: ${{secrets.JWT_RESET_EXPIRES_IN}}
-          JWT_CONFIRM_EXPIRES_IN: ${{secrets.JWT_CONFIRM_EXPIRES_IN}}
-          CLIENT_URL: ${{secrets.CLIENT_URL}}
-          SERVER_URL: ${{secrets.SERVER_URL}}
-          SERVER_PORT: ${{secrets.SERVER_PORT}}
-          MAIL_USER: ${{secrets.MAIL_USER}}
-          MAIL_PASS: ${{secrets.MAIL_PASS}}
-          MAIL_FIRSTNAME: ${{secrets.MAIL_FIRSTNAME}}
-          MAIL_LASTNAME: ${{secrets.MAIL_LASTNAME}}
-          GMAIL_CLIENT_ID: ${{secrets.GMAIL_CLIENT_ID}}
-          GMAIL_CLIENT_SECRET: ${{secrets.GMAIL_CLIENT_SECRET}}
-          GMAIL_REFRESH_TOKEN: ${{secrets.GMAIL_REFRESH_TOKEN}}
-          GMAIL_REDIRECT_URI: ${{secrets.GMAIL_REDIRECT_URI}}
-          COOKIE_DOMAIN: ${{secrets.COOKIE_DOMAIN}}
+#          MONGODB_URL: mongodb://127.0.0.1:27017/test
+#          JWT_ACCESS_SECRET: ${{secrets.JWT_ACCESS_SECRET}}
+#          JWT_REFRESH_SECRET: ${{secrets.JWT_REFRESH_SECRET}}
+#          JWT_RESET_SECRET: ${{secrets.JWT_RESET_SECRET}}
+#          JWT_CONFIRM_SECRET: ${{secrets.JWT_CONFIRM_SECRET}}
+#          JWT_ACCESS_EXPIRES_IN: ${{secrets.JWT_ACCESS_EXPIRES_IN}}
+#          JWT_REFRESH_EXPIRES_IN: ${{secrets.JWT_REFRESH_EXPIRES_IN}}
+#          JWT_RESET_EXPIRES_IN: ${{secrets.JWT_RESET_EXPIRES_IN}}
+#          JWT_CONFIRM_EXPIRES_IN: ${{secrets.JWT_CONFIRM_EXPIRES_IN}}
+#          CLIENT_URL: ${{secrets.CLIENT_URL}}
+#          SERVER_URL: ${{secrets.SERVER_URL}}
+#          SERVER_PORT: ${{secrets.SERVER_PORT}}
+#          MAIL_USER: ${{secrets.MAIL_USER}}
+#          MAIL_PASS: ${{secrets.MAIL_PASS}}
+#          MAIL_FIRSTNAME: ${{secrets.MAIL_FIRSTNAME}}
+#          MAIL_LASTNAME: ${{secrets.MAIL_LASTNAME}}
+#          GMAIL_CLIENT_ID: ${{secrets.GMAIL_CLIENT_ID}}
+#          GMAIL_CLIENT_SECRET: ${{secrets.GMAIL_CLIENT_SECRET}}
+#          GMAIL_REFRESH_TOKEN: ${{secrets.GMAIL_REFRESH_TOKEN}}
+#          GMAIL_REDIRECT_URI: ${{secrets.GMAIL_REDIRECT_URI}}
+#          COOKIE_DOMAIN: ${{secrets.COOKIE_DOMAIN}}
