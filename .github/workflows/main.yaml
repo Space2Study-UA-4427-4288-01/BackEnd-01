@@ -15,21 +15,21 @@ jobs:
 
       # - name: Run DB
 
-      - name: 'Start MongoDB'
-        uses: supercharge/mongodb-github-action@1.8.0
-        with:
-          mongodb-version: latest
-          mongodb-port: 27017
-          mongodb-username: ${{secrets.MONGODB_USER}}
-          mongodb-password: ${{secrets.MONGODB_PASS}}
-          mongodb-db: ${{secrets.MONGODB_DB}}
+      #- name: 'Start MongoDB'
+      # uses: supercharge/mongodb-github-action@1.8.0
+      #  with:
+      #   mongodb-version: latest
+      #    mongodb-port: 27017
+      #    mongodb-username: ${{secrets.MONGODB_USER}}
+      #    mongodb-password: ${{secrets.MONGODB_PASS}}
+      #    mongodb-db: ${{secrets.MONGODB_DB}}
 
-      - name: 'Wait for the database to start'
-        run: |
-          wget -qO- https://raw.githubusercontent.com/eficode/wait-for/$WAIT_FOR_VERSION/wait-for | 
-          sh -s -- localhost:27017 -- echo "Database is up"
-        env:
-          WAIT_FOR_VERSION: 4df3f9262d84cab0039c07bf861045fbb3c20ab7 # v2.2.3
+      #- name: 'Wait for the database to start'
+      #  run: |
+      #    wget -qO- https://raw.githubusercontent.com/eficode/wait-for/$WAIT_FOR_VERSION/wait-for | 
+      #    sh -s -- localhost:27017 -- echo "Database is up"
+      #  env:
+      #    WAIT_FOR_VERSION: 4df3f9262d84cab0039c07bf861045fbb3c20ab7 # v2.2.3
 
       - name: 'Install Node.js v.18'
         uses: actions/setup-node@v3
@@ -43,7 +43,7 @@ jobs:
         run: npm run test
         env:
           NODE_OPTIONS: --max_old_space_size=4096
-          MONGODB_URL: mongodb://${{secrets.MONGODB_USER}}:${{secrets.MONGODB_PASS}}@localhost:27017/${{secrets.MONGODB_DB}}?authSource=admin
+          MONGODB_URL: ${{secrets.MONGODB_URL}} 
           JWT_ACCESS_SECRET: ${{secrets.JWT_ACCESS_SECRET}}
           JWT_REFRESH_SECRET: ${{secrets.JWT_REFRESH_SECRET}}
           JWT_RESET_SECRET: ${{secrets.JWT_RESET_SECRET}}
