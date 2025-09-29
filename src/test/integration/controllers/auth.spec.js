@@ -12,7 +12,7 @@ describe('Auth controller', () => {
   let app, server, signupResponse
 
   beforeAll(async () => {
-    ; ({ app, server } = await serverInit())
+    ;({ app, server } = await serverInit())
   })
 
   beforeEach(async () => {
@@ -112,6 +112,89 @@ describe('Auth controller', () => {
       const response = await app.patch('/auth/reset-password/invalid-token').send({ password: 'valid_pass1' })
 
       expectError(400, errors.BAD_RESET_TOKEN, response)
+    })
+  })
+
+  describe('Google Auth endpoint', () => {
+    it('should authenticate user with valid Google token', async () => {
+      const mockVerifyIdToken = jest.fn().mockResolvedValue({
+        getPayload: () => ({
+          iss: 'accounts.google.com',
+          email_verified: true,
+          sub: 'test123',
+          email: 'googleuser@gmail.com',
+          given_name: 'Google',
+          family_name: 'User'
+        })
+      })
+
+      const { OAuth2Client } = require('google-auth-library')
+      OAuth2Client.prototype.verifyIdToken = mockVerifyIdToken
+
+      const response = await app.post('/auth/google-auth').send({ token: 'valid-google-token' })
+
+      expect(response.status).toBe(200)
+      expect(response.body).toHaveProperty('accessToken')
+    })
+
+    it('should throw error for invalid Google token', async () => {
+      const mockVerifyIdToken = jest.fn().mockRejectedValue(new Error('Invalid token'))
+      const { OAuth2Client } = require('google-auth-library')
+      OAuth2Client.prototype.verifyIdToken = mockVerifyIdToken
+
+      const response = await app.post('/auth/google-auth').send({ token: 'invalid-token' })
+
+      expect(response.status).toBe(422)
+      expect(response.body.error).toBe('TOKEN_NOT_VALID')
+    })
+
+    it('should return 422 for invalid issuer', async () => {
+      const mockVerifyIdToken = jest.fn().mockResolvedValue({
+        getPayload: () => ({
+          iss: 'invalid-issuer.com',
+          email_verified: true,
+          sub: 'test123',
+          email: 'test@gmail.com',
+          given_name: 'Test',
+          family_name: 'User'
+        })
+      })
+
+      const { OAuth2Client } = require('google-auth-library')
+      OAuth2Client.prototype.verifyIdToken = mockVerifyIdToken
+
+      const response = await app.post('/auth/google-auth').send({ token: 'invalid-issuer-token' })
+
+      expect(response.status).toBe(422)
+      expect(response.body.error).toBe('INVALID_TOKEN_ISSUER')
+    })
+
+    it('should return 422 for unverified email', async () => {
+      const mockVerifyIdToken = jest.fn().mockResolvedValue({
+        getPayload: () => ({
+          iss: 'accounts.google.com',
+          email_verified: false,
+          sub: 'test123',
+          email: 'test@gmail.com',
+          given_name: 'Test',
+          family_name: 'User'
+        })
+      })
+
+      const { OAuth2Client } = require('google-auth-library')
+      OAuth2Client.prototype.verifyIdToken = mockVerifyIdToken
+
+      const response = await app.post('/auth/google-auth').send({ token: 'unverified-email-token' })
+
+      expect(response.status).toBe(422)
+      expect(response.body.error).toBe('EMAIL_NOT_VERIFIED')
+    })
+
+    it('should return 422 for missing token', async () => {
+      const response = await app.post('/auth/google-auth').send({})
+
+      expect(response.status).toBe(422)
+      expect(response.body.error).toBe('MISSING_TOKEN')
     })
   })
 })

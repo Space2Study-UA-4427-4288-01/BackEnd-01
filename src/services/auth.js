@@ -7,12 +7,22 @@ const {
   INCORRECT_CREDENTIALS,
   BAD_RESET_TOKEN,
   BAD_REFRESH_TOKEN,
-  USER_NOT_FOUND
+  USER_NOT_FOUND,
+  INVALID_TOKEN_ISSUER,
+  EMAIL_NOT_VERIFIED,
+  MISSING_SUB_CLAIM
 } = require('~/consts/errors')
 const emailSubject = require('~/consts/emailSubject')
 const {
   tokenNames: { REFRESH_TOKEN, RESET_TOKEN, CONFIRM_TOKEN }
 } = require('~/consts/auth')
+const { OAuth2Client } = require('google-auth-library')
+const {
+  config: { GMAIL_CLIENT_ID }
+} = require('~/configs/config')
+
+const client = new OAuth2Client(GMAIL_CLIENT_ID)
+const crypto = require('crypto')
 
 const authService = {
   signup: async (role, firstName, lastName, email, password, language) => {
@@ -34,7 +44,7 @@ const authService = {
       throw createError(401, USER_NOT_FOUND)
     }
 
-    const checkedPassword = (password === user.password) || isFromGoogle
+    const checkedPassword = password === user.password || isFromGoogle
 
     if (!checkedPassword) {
       throw createError(401, INCORRECT_CREDENTIALS)
@@ -109,6 +119,41 @@ const authService = {
     await emailService.sendEmail(email, emailSubject.SUCCESSFUL_PASSWORD_RESET, language, {
       firstName
     })
+  },
+
+  googleAuth: async (idToken) => {
+    const ticket = await client.verifyIdToken({
+      idToken: idToken,
+      audience: GMAIL_CLIENT_ID
+    })
+
+    const payload = ticket.getPayload()
+
+    if (payload.iss !== 'accounts.google.com' && payload.iss !== 'https://accounts.google.com') {
+      throw createError(422, INVALID_TOKEN_ISSUER)
+    }
+
+    if (!payload.email_verified) {
+      throw createError(422, EMAIL_NOT_VERIFIED)
+    }
+
+    if (!payload.sub) {
+      throw createError(422, MISSING_SUB_CLAIM)
+    }
+
+    const { email, given_name: firstName, family_name: lastName } = payload
+
+    let user = await getUserByEmail(email)
+
+    if (!user) {
+      const safeLastName = lastName || firstName || 'User'
+      const safePassword = crypto.randomBytes(32).toString('hex')
+
+      user = await createUser('student', firstName || 'Google', safeLastName, email, safePassword, 'en')
+      await privateUpdateUser(user._id, { isEmailConfirmed: true })
+    }
+
+    return authService.login(email, '', true)
   }
 }
 

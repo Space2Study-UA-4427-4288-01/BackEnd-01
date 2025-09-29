@@ -91,6 +91,34 @@ const errors = {
     code: 'EMAIL_NOT_SENT',
     message: 'Email has not been sent.'
   },
+  INVALID_TOKEN_ISSUER: {
+    code: 'INVALID_TOKEN_ISSUER',
+    message: 'Invalid token issuer'
+  },
+  EMAIL_NOT_VERIFIED: {
+    code: 'EMAIL_NOT_VERIFIED',
+    message: 'Email not verified by Google'
+  },
+  MISSING_SUB_CLAIM: {
+    code: 'MISSING_SUB_CLAIM',
+    message: 'Missing subject claim in token'
+  },
+  TOKEN_NOT_VALID: {
+    code: 'TOKEN_NOT_VALID',
+    message: 'Google token is not valid'
+  },
+  MISSING_TOKEN: {
+    code: 'MISSING_TOKEN',
+    message: 'Google token is required'
+  },
+  RATE_LIMIT_EXCEEDED: {
+    code: 'RATE_LIMIT_EXCEEDED',
+    message: 'Too many Google auth attempts'
+  },
+  AUTHENTICATION_FAILED: {
+    code: 'AUTHENTICATION_FAILED',
+    message: 'Google authentication failed'
+  },
   INVALID_LANGUAGE: {
     code: 'INVALID_LANGUAGE',
     message: `The language name is invalid. Possible options: ${APP_LANG_ENUM.join(', ')}.`
