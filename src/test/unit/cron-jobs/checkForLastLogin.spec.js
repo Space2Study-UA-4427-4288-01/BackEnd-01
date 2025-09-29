@@ -21,14 +21,13 @@ jest.mock('~/services/email', () => ({
   sendEmail: jest.fn()
 }))
 
-const daysAgo = (baseDate, days) => new Date(baseDate.getTime() - days * MS_IN_DAY)
-
 let mockedUsersList
 
 describe('checkForLastUserLogin cron-job', () => {
   beforeEach(() => {
     const mockedNow = new Date('2023-08-23T00:00:00.000Z')
     const RealDate = Date
+
     jest.spyOn(global, 'Date').mockImplementation(
       ((Ctor) =>
         function MockDate(...args) {
@@ -36,13 +35,14 @@ describe('checkForLastUserLogin cron-job', () => {
           return new Ctor(...args)
         })(RealDate)
     )
+
     Object.assign(global.Date, {
       ...RealDate,
       now: jest.fn(() => mockedNow.getTime())
     })
 
     const loginForEmail = new Date(mockedNow.getTime() - DAYS_TO_SEND_EMAIL * MS_IN_DAY - 1)
-    const loginForDelete = new Date(mockedNow.getTime() - DAYS_TO_DELETE_USER * MS_IN_DAY)
+    const loginForDelete = new Date(mockedNow.getTime() - DAYS_TO_DELETE_USER * MS_IN_DAY - 1)
 
     mockedUsersList = { items: [{ ...mockedUser, lastLogin: loginForEmail }] }
     userService.getUsers = jest.fn(() => mockedUsersList)
@@ -80,8 +80,7 @@ describe('checkForLastUserLogin cron-job', () => {
   })
 
   it('should return array of undefined if user lastLogin date is less than days to send email', async () => {
-    const mockedNow = new Date(Date.now())
-    const optimalDate = daysAgo(mockedNow, DAYS_TO_SEND_EMAIL - 1)
+    const optimalDate = new Date(global.Date.now() - (DAYS_TO_SEND_EMAIL - 1) * MS_IN_DAY)
     mockedUsersList = { items: [{ ...mockedUser, lastLogin: optimalDate }] }
     userService.getUsers.mockImplementation(() => mockedUsersList)
 
