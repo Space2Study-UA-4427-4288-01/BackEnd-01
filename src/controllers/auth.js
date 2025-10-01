@@ -15,6 +15,13 @@ const COOKIE_OPTIONS = {
   domain: COOKIE_DOMAIN
 }
 
+const CLEAR_COOKIE_OPTIONS = {
+  httpOnly: true,
+  secure: true,
+  sameSite: 'none',
+  domain: COOKIE_DOMAIN
+}
+
 const signup = async (req, res) => {
   const { role, firstName, lastName, email, password } = req.body
   const lang = req.lang
@@ -38,22 +45,21 @@ const login = async (req, res) => {
 }
 
 const logout = async (req, res) => {
-  const { refreshToken } = req.cookies
+  const refreshToken = req.cookies?.[REFRESH_TOKEN]
 
   await authService.logout(refreshToken)
 
-  res.clearCookie(REFRESH_TOKEN)
-  res.clearCookie(ACCESS_TOKEN)
+  res.clearCookie(REFRESH_TOKEN, CLEAR_COOKIE_OPTIONS)
+  res.clearCookie(ACCESS_TOKEN, CLEAR_COOKIE_OPTIONS)
 
   res.status(204).end()
 }
 
 const refreshAccessToken = async (req, res) => {
-  const { refreshToken } = req.cookies
+  const refreshToken = req.cookies?.[REFRESH_TOKEN]
 
   if (!refreshToken) {
-    res.clearCookie(ACCESS_TOKEN)
-
+    res.clearCookie(ACCESS_TOKEN, CLEAR_COOKIE_OPTIONS)
     return res.status(401).end()
   }
 

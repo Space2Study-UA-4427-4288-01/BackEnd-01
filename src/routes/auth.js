@@ -11,6 +11,7 @@ const resetPasswordValidationSchema = require('~/validation/schemas/resetPasswor
 const forgotPasswordValidationSchema = require('~/validation/schemas/forgotPassword')
 
 const rateLimit = require('express-rate-limit')
+const { ipKeyGenerator } = require('express-rate-limit')
 
 const googleAuthLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -20,13 +21,22 @@ const googleAuthLimiter = rateLimit({
   legacyHeaders: false
 })
 
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => `${ipKeyGenerator(req)}:${(req.body?.email || '').toLowerCase()}`,
+  message: { error: 'RATE_LIMIT_EXCEEDED', message: 'Too many login attempts. Try again later.' }
+})
+
 router.post(
   '/signup',
   validationMiddleware(signupValidationSchema),
   langMiddleware,
   asyncWrapper(authController.signup)
 )
-router.post('/login', validationMiddleware(loginValidationSchema), asyncWrapper(authController.login))
+router.post('/login', loginLimiter, validationMiddleware(loginValidationSchema), asyncWrapper(authController.login))
 router.post('/logout', asyncWrapper(authController.logout))
 router.get('/refresh', asyncWrapper(authController.refreshAccessToken))
 router.post(

@@ -1,9 +1,11 @@
 const User = require('~/models/user')
 const { createError } = require('~/utils/errorsHelper')
-
+const bcrypt = require('bcrypt')
 const { DOCUMENT_NOT_FOUND, ALREADY_REGISTERED } = require('~/consts/errors')
 const filterAllowedFields = require('~/utils/filterAllowedFields')
 const { allowedUserFieldsForUpdate } = require('~/validation/services/user')
+
+const SALT_ROUNDS = 10
 
 const userService = {
   getUsers: async ({ match, sort, skip, limit }) => {
@@ -50,13 +52,15 @@ const userService = {
       throw createError(409, ALREADY_REGISTERED)
     }
 
+    const passwordHash = await bcrypt.hash(password, SALT_ROUNDS)
+
     return await User.create({
       role,
       firstName,
       lastName,
       email,
       lastLoginAs: role,
-      password,
+      password: passwordHash,
       appLanguage,
       isEmailConfirmed
     })

@@ -20,9 +20,9 @@ const { OAuth2Client } = require('google-auth-library')
 const {
   config: { GMAIL_CLIENT_ID }
 } = require('~/configs/config')
-
 const client = new OAuth2Client(GMAIL_CLIENT_ID)
 const crypto = require('crypto')
+const bcrypt = require('bcrypt')
 
 const authService = {
   signup: async (role, firstName, lastName, email, password, language) => {
@@ -41,10 +41,11 @@ const authService = {
     const user = await getUserByEmail(email)
 
     if (!user) {
-      throw createError(401, USER_NOT_FOUND)
+      await bcrypt.compare(password || '', '$2b$10$invalidsaltinvalidsaltinv') // ⚙️ fake compare
+      throw createError(401, INCORRECT_CREDENTIALS)
     }
 
-    const checkedPassword = password === user.password || isFromGoogle
+    const checkedPassword = isFromGoogle ? true : await bcrypt.compare(password, user.password)
 
     if (!checkedPassword) {
       throw createError(401, INCORRECT_CREDENTIALS)
