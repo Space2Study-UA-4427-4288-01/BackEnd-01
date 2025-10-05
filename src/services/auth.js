@@ -41,7 +41,7 @@ const authService = {
     const user = await getUserByEmail(email)
 
     if (!user) {
-      await bcrypt.compare(password || '', '$2b$10$invalidsaltinvalidsaltinv') // ⚙️ fake compare
+      await bcrypt.compare(password || '', '$2b$10$invalidsaltinvalidsaltinv')
       throw createError(401, INCORRECT_CREDENTIALS)
     }
 

@@ -1,8 +1,14 @@
+jest.mock('~/services/email', () => ({ sendEmail: jest.fn().mockResolvedValue(true) }))
+const User = require('~/models/user')
+const { OAuth2Client } = require('google-auth-library')
 const { serverInit, serverCleanup, stopServer } = require('~/test/setup')
 const {
   lengths: { MIN_PASSWORD_LENGTH, MAX_PASSWORD_LENGTH },
   enums: { ROLE_ENUM }
 } = require('~/consts/validation')
+const {
+  tokenNames: { ACCESS_TOKEN, REFRESH_TOKEN }
+} = require('~/consts/auth')
 const errors = require('~/consts/errors')
 const tokenService = require('~/services/token')
 const Token = require('~/models/token')
@@ -58,7 +64,6 @@ describe('Auth controller', () => {
 
     it('should throw validation error for the role value', async () => {
       const signupResponse = await app.post('/auth/signup').send({ ...user, role: 'test' })
-
       const error = errors.FIELD_IS_NOT_OF_PROPER_ENUM_VALUE('role', ROLE_ENUM)
       expectError(422, error, signupResponse)
     })
@@ -82,74 +87,133 @@ describe('Auth controller', () => {
 
     it('should throw ALREADY_REGISTERED error', async () => {
       await app.post('/auth/signup').send(user)
-
       const response = await app.post('/auth/signup').send(user)
-
       expectError(409, errors.ALREADY_REGISTERED, response)
+    })
+  })
+
+  describe('Login endpoint', () => {
+    it('should return 401 for wrong password', async () => {
+      const signup = await app.post('/auth/signup').send({
+        role: 'student',
+        firstName: 'Login',
+        lastName: 'User',
+        email: 'login.user@example.com',
+        password: 'Valid_pass1'
+      })
+      expect(signup.status).toBe(201)
+
+      await User.updateOne({ _id: signup.body.userId }, { $set: { isEmailConfirmed: true } }).exec()
+
+      const res = await app.post('/auth/login').send({
+        email: 'login.user@example.com',
+        password: 'Wrong_pass1'
+      })
+
+      expect(res.status).toBe(401)
+      expect(res.body).toMatchObject({
+        code: 'INCORRECT_CREDENTIALS'
+      })
+    })
+
+    it('should return 200 and set cookies on successful login', async () => {
+      const signup = await app.post('/auth/signup').send({
+        role: 'student',
+        firstName: 'Login',
+        lastName: 'Success',
+        email: 'login.success@example.com',
+        password: 'Valid_pass1'
+      })
+      expect(signup.status).toBe(201)
+
+      await User.updateOne({ _id: signup.body.userId }, { $set: { isEmailConfirmed: true } }).exec()
+
+      const res = await app.post('/auth/login').send({
+        email: 'login.success@example.com',
+        password: 'Valid_pass1'
+      })
+
+      expect(res.status).toBe(200)
+      expect(res.body).toHaveProperty('accessToken')
+
+      const setCookie = res.headers['set-cookie'] || []
+      const hasAccess = setCookie.some((c) => c.startsWith(`${ACCESS_TOKEN}=`))
+      const hasRefresh = setCookie.some((c) => c.startsWith(`${REFRESH_TOKEN}=`))
+      expect(hasAccess).toBe(true)
+      expect(hasRefresh).toBe(true)
     })
   })
 
   describe('SendResetPasswordEmail endpoint', () => {
     it('should throw USER_NOT_FOUND error', async () => {
       const response = await app.post('/auth/forgot-password').send({ email: 'invalid@gmail.com' })
-
       expectError(404, errors.USER_NOT_FOUND, response)
     })
   })
 
   describe('UpdatePassword endpoint', () => {
     let resetToken
+    let findOneSpy
+
     beforeEach(() => {
       const { firstName, email, role } = user
-
       resetToken = tokenService.generateResetToken({ id: signupResponse.body.userId, firstName, email, role })
 
-      Token.findOne = jest.fn().mockResolvedValue({ save: jest.fn().mockResolvedValue(resetToken) })
+      findOneSpy = jest.spyOn(Token, 'findOne').mockResolvedValue({ save: jest.fn().mockResolvedValue(resetToken) })
     })
-    afterEach(() => jest.resetAllMocks())
+
+    afterEach(() => {
+      if (findOneSpy) findOneSpy.mockRestore()
+    })
 
     it('should throw BAD_RESET_TOKEN error', async () => {
       const response = await app.patch('/auth/reset-password/invalid-token').send({ password: 'valid_pass1' })
-
       expectError(400, errors.BAD_RESET_TOKEN, response)
     })
   })
 
   describe('Google Auth endpoint', () => {
+    afterEach(() => {
+      jest.restoreAllMocks()
+    })
+
     it('should authenticate user with valid Google token', async () => {
-      const mockVerifyIdToken = jest.fn().mockResolvedValue({
+      const uniqueEmail = `googleuser+${Date.now()}@example.com`
+      await User.deleteOne({ email: uniqueEmail })
+
+      const spy = jest.spyOn(OAuth2Client.prototype, 'verifyIdToken').mockResolvedValue({
         getPayload: () => ({
           iss: 'accounts.google.com',
           email_verified: true,
-          sub: 'test123',
-          email: 'googleuser@gmail.com',
+          sub: `test-${Date.now()}`,
+          email: uniqueEmail,
           given_name: 'Google',
           family_name: 'User'
         })
       })
 
-      const { OAuth2Client } = require('google-auth-library')
-      OAuth2Client.prototype.verifyIdToken = mockVerifyIdToken
+      const res = await app.post('/auth/google-auth').send({ token: 'valid-google-token' })
 
-      const response = await app.post('/auth/google-auth').send({ token: 'valid-google-token' })
+      expect(spy).toHaveBeenCalled()
+      expect(res.status).toBe(200)
+      expect(res.body).toHaveProperty('accessToken')
 
-      expect(response.status).toBe(200)
-      expect(response.body).toHaveProperty('accessToken')
+      spy.mockRestore()
     })
 
     it('should throw error for invalid Google token', async () => {
-      const mockVerifyIdToken = jest.fn().mockRejectedValue(new Error('Invalid token'))
-      const { OAuth2Client } = require('google-auth-library')
-      OAuth2Client.prototype.verifyIdToken = mockVerifyIdToken
+      const spy = jest.spyOn(OAuth2Client.prototype, 'verifyIdToken').mockRejectedValue(new Error('Invalid token'))
 
-      const response = await app.post('/auth/google-auth').send({ token: 'invalid-token' })
+      const res = await app.post('/auth/google-auth').send({ token: 'invalid-token' })
 
-      expect(response.status).toBe(422)
-      expect(response.body.error).toBe('TOKEN_NOT_VALID')
+      expect(res.status).toBe(422)
+      expect(res.body.error).toBe('TOKEN_NOT_VALID')
+
+      spy.mockRestore()
     })
 
     it('should return 422 for invalid issuer', async () => {
-      const mockVerifyIdToken = jest.fn().mockResolvedValue({
+      const spy = jest.spyOn(OAuth2Client.prototype, 'verifyIdToken').mockResolvedValue({
         getPayload: () => ({
           iss: 'invalid-issuer.com',
           email_verified: true,
@@ -160,17 +224,16 @@ describe('Auth controller', () => {
         })
       })
 
-      const { OAuth2Client } = require('google-auth-library')
-      OAuth2Client.prototype.verifyIdToken = mockVerifyIdToken
+      const res = await app.post('/auth/google-auth').send({ token: 'invalid-issuer-token' })
 
-      const response = await app.post('/auth/google-auth').send({ token: 'invalid-issuer-token' })
+      expect(res.status).toBe(422)
+      expect(res.body.error).toBe('INVALID_TOKEN_ISSUER')
 
-      expect(response.status).toBe(422)
-      expect(response.body.error).toBe('INVALID_TOKEN_ISSUER')
+      spy.mockRestore()
     })
 
     it('should return 422 for unverified email', async () => {
-      const mockVerifyIdToken = jest.fn().mockResolvedValue({
+      const spy = jest.spyOn(OAuth2Client.prototype, 'verifyIdToken').mockResolvedValue({
         getPayload: () => ({
           iss: 'accounts.google.com',
           email_verified: false,
@@ -181,20 +244,53 @@ describe('Auth controller', () => {
         })
       })
 
-      const { OAuth2Client } = require('google-auth-library')
-      OAuth2Client.prototype.verifyIdToken = mockVerifyIdToken
+      const res = await app.post('/auth/google-auth').send({ token: 'unverified-email-token' })
 
-      const response = await app.post('/auth/google-auth').send({ token: 'unverified-email-token' })
+      expect(res.status).toBe(422)
+      expect(res.body.error).toBe('EMAIL_NOT_VERIFIED')
 
-      expect(response.status).toBe(422)
-      expect(response.body.error).toBe('EMAIL_NOT_VERIFIED')
+      spy.mockRestore()
     })
 
     it('should return 422 for missing token', async () => {
       const response = await app.post('/auth/google-auth').send({})
-
       expect(response.status).toBe(422)
       expect(response.body.error).toBe('MISSING_TOKEN')
+    })
+  })
+
+  describe('Refresh endpoint', () => {
+    it('should refresh access token with valid refresh cookie', async () => {
+      const email = `ref.${Date.now()}@example.com`
+      const password = 'Valid_pass1'
+
+      const signup = await app.post('/auth/signup').send({
+        role: 'student',
+        firstName: 'Ref',
+        lastName: 'Test',
+        email,
+        password
+      })
+
+      if (signup.status !== 201) {
+        process.stdout.write('Signup failed:\n' + JSON.stringify(signup.body, null, 2) + '\n')
+      }
+
+      expect(signup.status).toBe(201)
+
+      await User.updateOne(
+        { _id: signup.body.userId },
+        { $set: { isEmailConfirmed: true, lastLoginAs: 'student' } }
+      ).exec()
+
+      const loginRes = await app.post('/auth/login').send({ email, password })
+      expect(loginRes.status).toBe(200)
+      const cookies = loginRes.headers['set-cookie'] || []
+      expect(cookies.length).toBeGreaterThan(0)
+
+      const refreshRes = await app.get('/auth/refresh').set('Cookie', cookies)
+      expect(refreshRes.status).toBe(200)
+      expect(refreshRes.body).toHaveProperty('accessToken')
     })
   })
 })
