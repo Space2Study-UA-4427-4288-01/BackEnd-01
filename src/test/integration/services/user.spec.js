@@ -4,6 +4,7 @@ const User = require('~/models/user')
 const { ALREADY_REGISTERED, DOCUMENT_NOT_FOUND } = require('~/consts/errors')
 const mongoose = require('mongoose')
 const { roles } = require('~/consts/auth')
+const { TEST_USER_PASSWORD } = require('../constants/test-constants')
 
 const createRawUser = async (overrides = {}) => {
     const base = {
@@ -11,7 +12,7 @@ const createRawUser = async (overrides = {}) => {
         firstName: 'John',
         lastName: 'Doe',
         email: `${Math.random().toString(16).slice(2)}@mail.com`,
-        password: 'Password123',
+        password: TEST_USER_PASSWORD,
         appLanguage: 'en',
         isEmailConfirmed: true,
         lastLoginAs: 'student'
@@ -20,7 +21,7 @@ const createRawUser = async (overrides = {}) => {
 }
 
 describe('userService integration', () => {
-    let app, server
+    let server
 
     beforeAll(async () => {
         ; ({ app, server } = await serverInit())
@@ -41,7 +42,7 @@ describe('userService integration', () => {
                 'Alice',
                 'Wonder',
                 'alice@example.com',
-                'StrongPass1',
+                TEST_USER_PASSWORD,
                 'en',
                 true
             )
@@ -63,7 +64,7 @@ describe('userService integration', () => {
                 'Bob',
                 'Marley',
                 'bob@example.com',
-                'StrongPass1',
+                TEST_USER_PASSWORD,
                 'en',
                 true
             )
@@ -73,7 +74,7 @@ describe('userService integration', () => {
                     'Bobby',
                     'Marley',
                     'bob@example.com',
-                    'StrongPass1',
+                    TEST_USER_PASSWORD,
                     'en',
                     true
                 )
@@ -93,7 +94,7 @@ describe('userService integration', () => {
                 'Clark',
                 'Kent',
                 'clark@example.com',
-                'StrongPass1',
+                TEST_USER_PASSWORD,
                 'en',
                 true
             )
