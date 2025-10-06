@@ -1,4 +1,6 @@
 jest.mock('~/services/email', () => ({ sendEmail: jest.fn().mockResolvedValue(true) }))
+
+const crypto = require('crypto')
 const User = require('~/models/user')
 const { OAuth2Client } = require('google-auth-library')
 const { serverInit, serverCleanup, stopServer } = require('~/test/setup')
@@ -14,25 +16,28 @@ const tokenService = require('~/services/token')
 const Token = require('~/models/token')
 const { expectError } = require('~/test/helpers')
 
-const genEmail = (prefix = 'user') => `${prefix}.${Date.now()}.${Math.random().toString(36).slice(2, 8)}@example.com`
-const genValidPassword = () => `T_${Math.random().toString(36).slice(-8)}1`
+const genUUID = () => crypto.randomUUID().replace(/-/g, '')
+const genEmail = (prefix = 'user') => `${prefix}.${genUUID().slice(0, 12)}@example.com`
+const genValidPassword = () => `T_${genUUID().slice(0, 8)}1`
 
 describe('Auth controller', () => {
-  let app, server, signupResponse, baseUser
+  let app, server, signupResponse
 
   beforeAll(async () => {
     ;({ app, server } = await serverInit())
   })
 
+  const baseUser = {
+    role: 'student',
+    firstName: 'test',
+    lastName: 'test',
+    email: genEmail('base'),
+    password: genValidPassword()
+  }
+
   beforeEach(async () => {
-    baseUser = {
-      role: 'student',
-      firstName: 'test',
-      lastName: 'test',
-      email: genEmail('signup'),
-      password: genValidPassword()
-    }
-    signupResponse = await app.post('/auth/signup').send(baseUser)
+    const user = { ...baseUser, email: genEmail('base'), password: genValidPassword() }
+    signupResponse = await app.post('/auth/signup').send(user)
   })
 
   afterEach(async () => {
@@ -45,16 +50,16 @@ describe('Auth controller', () => {
 
   describe('Signup endpoint', () => {
     it('should throw validation errors for the firstName field', async () => {
-      const responseForFormat = await app.post('/auth/signup').send({
-        ...baseUser,
-        email: genEmail('firstNameFormat'),
-        firstName: '12345'
-      })
-      const responseForNull = await app.post('/auth/signup').send({
-        ...baseUser,
-        email: genEmail('firstNameNull'),
-        firstName: null
-      })
+      const user = {
+        role: 'student',
+        firstName: 'test',
+        lastName: 'test',
+        email: genEmail('v1'),
+        password: genValidPassword()
+      }
+
+      const responseForFormat = await app.post('/auth/signup').send({ ...user, firstName: '12345' })
+      const responseForNull = await app.post('/auth/signup').send({ ...user, firstName: null })
 
       const formatError = errors.NAME_FIELD_IS_NOT_OF_PROPER_FORMAT('firstName')
       const nullError = errors.FIELD_IS_NOT_DEFINED('firstName')
@@ -63,14 +68,16 @@ describe('Auth controller', () => {
     })
 
     it('should throw validation errors for the email format', async () => {
-      const responseForFormat = await app.post('/auth/signup').send({
-        ...baseUser,
-        email: 'test'
-      })
-      const responseForType = await app.post('/auth/signup').send({
-        ...baseUser,
-        email: 312938
-      })
+      const user = {
+        role: 'student',
+        firstName: 'test',
+        lastName: 'test',
+        email: genEmail('v2'),
+        password: genValidPassword()
+      }
+
+      const responseForFormat = await app.post('/auth/signup').send({ ...user, email: 'test' })
+      const responseForType = await app.post('/auth/signup').send({ ...user, email: 312938 })
 
       const formatError = errors.FIELD_IS_NOT_OF_PROPER_FORMAT('email')
       const typeError = errors.FIELD_IS_NOT_OF_PROPER_TYPE('email', 'string')
@@ -79,28 +86,35 @@ describe('Auth controller', () => {
     })
 
     it('should throw validation error for the role value', async () => {
-      const signupResponseInvalidRole = await app.post('/auth/signup').send({
-        ...baseUser,
-        email: genEmail('invalidRole'),
-        role: 'test'
-      })
+      const user = {
+        role: 'student',
+        firstName: 'test',
+        lastName: 'test',
+        email: genEmail('v3'),
+        password: genValidPassword()
+      }
 
+      const signupResponse = await app.post('/auth/signup').send({ ...user, role: 'test' })
       const error = errors.FIELD_IS_NOT_OF_PROPER_ENUM_VALUE('role', ROLE_ENUM)
-      expectError(422, error, signupResponseInvalidRole)
+      expectError(422, error, signupResponse)
     })
 
     it('should throw validation errors for the password`s length', async () => {
-      const responseForMax = await app.post('/auth/signup').send({
-        ...baseUser,
-        email: genEmail('passMax'),
-        password: '1'.repeat(MAX_PASSWORD_LENGTH + 1)
-      })
+      const user = {
+        role: 'student',
+        firstName: 'test',
+        lastName: 'test',
+        email: genEmail('v4'),
+        password: genValidPassword()
+      }
 
-      const responseForMin = await app.post('/auth/signup').send({
-        ...baseUser,
-        email: genEmail('passMin'),
-        password: '1'.repeat(MIN_PASSWORD_LENGTH - 1)
-      })
+      const responseForMax = await app
+        .post('/auth/signup')
+        .send({ ...user, password: '1'.repeat(MAX_PASSWORD_LENGTH + 1) })
+
+      const responseForMin = await app
+        .post('/auth/signup')
+        .send({ ...user, password: '1'.repeat(MIN_PASSWORD_LENGTH - 1) })
 
       const error = errors.FIELD_IS_NOT_OF_PROPER_LENGTH('password', {
         min: MIN_PASSWORD_LENGTH,
@@ -111,17 +125,23 @@ describe('Auth controller', () => {
     })
 
     it('should throw ALREADY_REGISTERED error', async () => {
-      const uniq = genEmail('dup')
-      const u = { ...baseUser, email: uniq }
-      await app.post('/auth/signup').send(u)
-      const response = await app.post('/auth/signup').send(u)
+      const user = {
+        role: 'student',
+        firstName: 'test',
+        lastName: 'test',
+        email: genEmail('dup'),
+        password: genValidPassword()
+      }
+
+      await app.post('/auth/signup').send(user)
+      const response = await app.post('/auth/signup').send(user)
       expectError(409, errors.ALREADY_REGISTERED, response)
     })
   })
 
   describe('Login endpoint', () => {
     it('should return 401 for wrong password', async () => {
-      const email = genEmail('loginWrong')
+      const email = genEmail('login.user')
       const PASS_OK = genValidPassword()
       const PASS_WRONG = PASS_OK.endsWith('1') ? PASS_OK.slice(0, -1) + '2' : PASS_OK + '2'
 
@@ -136,14 +156,17 @@ describe('Auth controller', () => {
 
       await User.updateOne({ _id: signup.body.userId }, { $set: { isEmailConfirmed: true } }).exec()
 
-      const res = await app.post('/auth/login').send({ email, password: PASS_WRONG })
+      const res = await app.post('/auth/login').send({
+        email,
+        password: PASS_WRONG
+      })
 
       expect(res.status).toBe(401)
       expect(res.body).toMatchObject({ code: 'INCORRECT_CREDENTIALS' })
     })
 
     it('should return 200 and set cookies on successful login', async () => {
-      const email = genEmail('loginOk')
+      const email = genEmail('login.success')
       const password = genValidPassword()
 
       const signup = await app.post('/auth/signup').send({
@@ -182,17 +205,22 @@ describe('Auth controller', () => {
     let findOneSpy
 
     beforeEach(() => {
-      const { firstName, email, role } = baseUser
+      const testUser = {
+        role: 'student',
+        firstName: 'test',
+        lastName: 'test',
+        email: genEmail('reset'),
+        password: genValidPassword()
+      }
+
       resetToken = tokenService.generateResetToken({
-        id: signupResponse.body.userId,
-        firstName,
-        email,
-        role
+        id: signupResponse.body?.userId || genUUID(),
+        firstName: testUser.firstName,
+        email: testUser.email,
+        role: testUser.role
       })
 
-      findOneSpy = jest.spyOn(Token, 'findOne').mockResolvedValue({
-        save: jest.fn().mockResolvedValue(resetToken)
-      })
+      findOneSpy = jest.spyOn(Token, 'findOne').mockResolvedValue({ save: jest.fn().mockResolvedValue(resetToken) })
     })
 
     afterEach(() => {
@@ -201,7 +229,6 @@ describe('Auth controller', () => {
 
     it('should throw BAD_RESET_TOKEN error', async () => {
       const response = await app.patch('/auth/reset-password/invalid-token').send({ password: genValidPassword() })
-
       expectError(400, errors.BAD_RESET_TOKEN, response)
     })
   })
@@ -212,14 +239,14 @@ describe('Auth controller', () => {
     })
 
     it('should authenticate user with valid Google token', async () => {
-      const uniqueEmail = genEmail('google')
+      const uniqueEmail = genEmail('googleuser')
       await User.deleteOne({ email: uniqueEmail })
 
       const spy = jest.spyOn(OAuth2Client.prototype, 'verifyIdToken').mockResolvedValue({
         getPayload: () => ({
           iss: 'accounts.google.com',
           email_verified: true,
-          sub: `test-${Date.now()}`,
+          sub: `test-${genUUID()}`,
           email: uniqueEmail,
           given_name: 'Google',
           family_name: 'User'
@@ -295,7 +322,7 @@ describe('Auth controller', () => {
 
   describe('Refresh endpoint', () => {
     it('should refresh access token with valid refresh cookie', async () => {
-      const email = genEmail('refresh')
+      const email = genEmail('ref')
       const password = genValidPassword()
 
       const signup = await app.post('/auth/signup').send({

@@ -1,6 +1,8 @@
 jest.mock('~/services/email', () => ({ sendEmail: jest.fn().mockResolvedValue(true) }))
 jest.mock('~/logger/logger', () => ({ info: jest.fn(), error: jest.fn(), warn: jest.fn(), debug: jest.fn() }))
 
+const crypto = require('crypto')
+
 const { serverInit, serverCleanup, stopServer } = require('~/test/setup')
 const { expectError } = require('~/test/helpers')
 const { UNAUTHORIZED, FORBIDDEN } = require('~/consts/errors')
@@ -15,19 +17,24 @@ const endpointUrl = '/resources-categories/'
 const testResourceCategoryData = { name: 'Chemical Category' }
 const updateResourceCategoryData = { name: 'Computer Science' }
 
+const genUUID = () => crypto.randomUUID().replace(/-/g, '')
+const genEmail = (prefix) => `${prefix}.${genUUID().slice(0, 12)}@example.com`
+const genPassword = () => `T_${genUUID().slice(0, 8)}1`
+
 const tutorUserData = {
   role: 'tutor',
   firstName: 'Res',
   lastName: 'Tutor',
-  email: 'res.tutor@example.com',
-  password: 'Valid_pass1'
+  email: genEmail('res.tutor'),
+  password: genPassword()
 }
+
 const studentUserData = {
   role: 'student',
   firstName: 'Yamada',
   lastName: 'Kizen',
-  email: 'yamakai@gmail.com',
-  password: 'ninpopass1',
+  email: genEmail('student'),
+  password: genPassword(),
   appLanguage: 'en',
   isEmailConfirmed: true,
   lastLogin: new Date().toJSON(),
@@ -43,7 +50,6 @@ async function signupConfirmAndLogin(app, { role, firstName, lastName, email, pa
   const uniqueIp = '10.' + (email.length % 250) + '.0.' + (email.charCodeAt(0) % 250)
 
   const loginRes = await app.post('/auth/login').set('X-Forwarded-For', uniqueIp).send({ email, password })
-
   expect(loginRes.statusCode).toBe(200)
 
   const cookies = loginRes.headers['set-cookie'] || []
@@ -61,11 +67,14 @@ describe('ResourceCategory controller', () => {
   })
 
   beforeEach(async () => {
-    const tutor = await signupConfirmAndLogin(app, tutorUserData, TUTOR)
+    const tutorData = { ...tutorUserData, email: genEmail('res.tutor'), password: genPassword() }
+    const studentData = { ...studentUserData, email: genEmail('student'), password: genPassword() }
+
+    const tutor = await signupConfirmAndLogin(app, tutorData, TUTOR)
     tutorCookies = tutor.cookies
     currentUser = tutor.payload
 
-    const student = await signupConfirmAndLogin(app, studentUserData, 'student')
+    const student = await signupConfirmAndLogin(app, studentData, 'student')
     studentCookies = student.cookies
 
     testResourceCategory = await app.post(endpointUrl).send(testResourceCategoryData).set('Cookie', tutorCookies)
@@ -119,7 +128,6 @@ describe('ResourceCategory controller', () => {
 
     it('should throw FORBIDDEN', async () => {
       const response = await app.patch(endpointUrl).send(updateResourceCategoryData).set('Cookie', studentCookies)
-
       expectError(403, FORBIDDEN, response)
     })
   })
