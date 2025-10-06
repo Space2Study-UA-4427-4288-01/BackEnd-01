@@ -6,7 +6,10 @@ const ResourcesCategory = require('~/models/resourcesCategory')
 const mongoose = require('mongoose')
 const { roles } = require('~/consts/auth')
 
-const createAuthor = async (email = `${Math.random().toString(16).slice(2)}@mail.com`) => {
+// Use crypto.randomUUID instead of Math.random to avoid Sonar (S2245) weak PRNG warning.
+// This randomness is only for generating unique test emails (non-security context).
+const { randomUUID } = require('crypto')
+const createAuthor = async (email = `user_${randomUUID()}@test.local`) => {
   const user = await userService.createUser(
     roles.STUDENT,
     'Autor',
