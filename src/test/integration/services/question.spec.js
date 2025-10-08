@@ -5,17 +5,15 @@ const Question = require('~/models/question')
 const ResourcesCategory = require('~/models/resourcesCategory')
 const mongoose = require('mongoose')
 const { roles } = require('~/consts/auth')
+const { genValidPassword, genEmail } = require('~/test/helpers')
 
-// Use crypto.randomUUID instead of Math.random to avoid Sonar (S2245) weak PRNG warning.
-// This randomness is only for generating unique test emails (non-security context).
-const { randomUUID } = require('crypto')
-const createAuthor = async (email = `user_${randomUUID()}@test.local`) => {
+const createAuthor = async (email = genEmail()) => {
   const user = await userService.createUser(
     roles.STUDENT,
     'Autor',
     'Test',
     email,
-    'StrongPass1',
+    genValidPassword(),
     'en',
     true
   )
