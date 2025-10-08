@@ -11,13 +11,27 @@ const resetPasswordValidationSchema = require('~/validation/schemas/resetPasswor
 const forgotPasswordValidationSchema = require('~/validation/schemas/forgotPassword')
 
 const rateLimit = require('express-rate-limit')
+const { ipKeyGenerator } = require('express-rate-limit')
+
+const isTest = process.env.NODE_ENV === 'test'
 
 const googleAuthLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 5,
   message: { error: 'RATE_LIMIT_EXCEEDED', message: 'Too many Google auth attempts' },
   standardHeaders: true,
-  legacyHeaders: false
+  legacyHeaders: false,
+  skip: () => isTest
+})
+
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => `${ipKeyGenerator(req)}:${(req.body?.email || '').toLowerCase()}`,
+  message: { error: 'RATE_LIMIT_EXCEEDED', message: 'Too many login attempts. Try again later.' },
+  skip: () => isTest
 })
 
 router.post(
@@ -26,15 +40,20 @@ router.post(
   langMiddleware,
   asyncWrapper(authController.signup)
 )
-router.post('/login', validationMiddleware(loginValidationSchema), asyncWrapper(authController.login))
+
+router.post('/login', loginLimiter, validationMiddleware(loginValidationSchema), asyncWrapper(authController.login))
+
 router.post('/logout', asyncWrapper(authController.logout))
+
 router.get('/refresh', asyncWrapper(authController.refreshAccessToken))
+
 router.post(
   '/forgot-password',
   validationMiddleware(forgotPasswordValidationSchema),
   langMiddleware,
   asyncWrapper(authController.sendResetPasswordEmail)
 )
+
 router.patch(
   '/reset-password/:token',
   validationMiddleware(resetPasswordValidationSchema),

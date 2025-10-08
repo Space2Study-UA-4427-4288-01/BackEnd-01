@@ -73,16 +73,16 @@ const tokenService = {
       throw createError(404, INVALID_TOKEN_NAME)
     }
 
-    let tokenData = await Token.findOne({ user: userId })
+    const tokenData = await Token.findOne({ user: userId }).exec()
 
-    try {
-      tokenData = await Token.findOne({ user: userId }).exec()
+    if (tokenData) {
       tokenData[tokenName] = tokenValue
-
-      return tokenData.save()
-    } catch (error) {
-      return await Token.create({ user: userId, [tokenName]: tokenValue })
+      await tokenData.save()
+      return { [tokenName]: tokenValue }
     }
+
+    await Token.create({ user: userId, [tokenName]: tokenValue })
+    return { [tokenName]: tokenValue }
   },
 
   findToken: async (tokenValue, tokenName) => {
