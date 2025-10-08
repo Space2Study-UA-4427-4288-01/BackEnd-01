@@ -1,6 +1,5 @@
 jest.mock('~/services/email', () => ({ sendEmail: jest.fn().mockResolvedValue(true) }))
 
-const crypto = require('crypto')
 const User = require('~/models/user')
 const { OAuth2Client } = require('google-auth-library')
 const { serverInit, serverCleanup, stopServer } = require('~/test/setup')
@@ -14,11 +13,8 @@ const {
 const errors = require('~/consts/errors')
 const tokenService = require('~/services/token')
 const Token = require('~/models/token')
-const { expectError } = require('~/test/helpers')
+const { expectError, genEmail, genValidPassword, genUUID } = require('~/test/helpers')
 
-const genUUID = () => crypto.randomUUID().replace(/-/g, '')
-const genEmail = (prefix = 'user') => `${prefix}.${genUUID().slice(0, 12)}@example.com`
-const genValidPassword = () => `T_${genUUID().slice(0, 8)}1`
 
 describe('Auth controller', () => {
   let app, server, signupResponse
