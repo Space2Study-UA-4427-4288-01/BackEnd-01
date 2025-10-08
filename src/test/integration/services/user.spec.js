@@ -4,15 +4,15 @@ const User = require('~/models/user')
 const { ALREADY_REGISTERED, DOCUMENT_NOT_FOUND } = require('~/consts/errors')
 const mongoose = require('mongoose')
 const { roles } = require('~/consts/auth')
-const { TEST_USER_PASSWORD } = require('../constants/test-constants')
+const { genValidPassword, genEmail } = require('~/test/helpers')
 
 const createRawUser = async (overrides = {}) => {
     const base = {
         role: [roles.STUDENT],
         firstName: 'John',
         lastName: 'Doe',
-        email: `${Math.random().toString(16).slice(2)}@mail.com`,
-        password: TEST_USER_PASSWORD,
+        email: genEmail(),
+        password: genValidPassword(),
         appLanguage: 'en',
         isEmailConfirmed: true,
         lastLoginAs: 'student'
@@ -42,7 +42,7 @@ describe('userService integration', () => {
                 'Alice',
                 'Wonder',
                 'alice@example.com',
-                TEST_USER_PASSWORD,
+                genValidPassword(),
                 'en',
                 true
             )
@@ -59,12 +59,13 @@ describe('userService integration', () => {
         })
 
         it('throws ALREADY_REGISTERED when duplicate email', async () => {
+            const password = genValidPassword();
             await userService.createUser(
                 roles.STUDENT,
                 'Bob',
                 'Marley',
                 'bob@example.com',
-                TEST_USER_PASSWORD,
+                password,
                 'en',
                 true
             )
@@ -74,7 +75,7 @@ describe('userService integration', () => {
                     'Bobby',
                     'Marley',
                     'bob@example.com',
-                    TEST_USER_PASSWORD,
+                    password,
                     'en',
                     true
                 )
@@ -94,7 +95,7 @@ describe('userService integration', () => {
                 'Clark',
                 'Kent',
                 'clark@example.com',
-                TEST_USER_PASSWORD,
+                genValidPassword(),
                 'en',
                 true
             )
@@ -123,7 +124,7 @@ describe('userService integration', () => {
             await userService.updateUser(created._id, 'student', {
                 firstName: 'EvaUpdated',
                 mainSubjects: studentSubjects,
-                password: 'ShouldBeIgnored'
+                password: genValidPassword()
             })
 
             const updated = await User.findById(created._id).select('+password').lean().exec()
