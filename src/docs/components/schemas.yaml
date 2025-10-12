@@ -112,3 +112,17 @@ components:
         status:
           type: integer
           example: 400
+
+    # Locations
+    CountriesResponse:
+      type: object
+      properties:
+        name:
+          type: string
+          example: "Ukraine"
+        code:
+          type: string
+          example: "UA"
+        phoneCode:
+          type: string
+          example: "+380" 
