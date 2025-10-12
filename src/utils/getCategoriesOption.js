@@ -1,6 +1,10 @@
 const getCategoriesOptions = (categories) => {
   if (categories) {
-    return categories.map((item) => (item === 'null' ? null : item))
+    if (Array.isArray(categories)) {
+      return categories.map((item) => (item === 'null' ? null : item))
+    } else {
+      return categories
+    }
   } else {
     return
   }
