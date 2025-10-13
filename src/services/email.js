@@ -1,4 +1,5 @@
 const EmailTemplates = require('email-templates')
+const path = require('path')
 const { sendMail } = require('~/utils/mailer')
 const { templateList } = require('~/emails')
 const {
@@ -7,7 +8,11 @@ const {
 const { createError } = require('~/utils/errorsHelper')
 const { TEMPLATE_NOT_FOUND } = require('~/consts/errors')
 
-const emailTemplates = new EmailTemplates()
+const emailTemplates = new EmailTemplates({
+  views: {
+    root: path.resolve(__dirname, '../emails')
+  }
+})
 
 const emailService = {
   sendEmail: async (email, subject, language, text = {}) => {

@@ -44,6 +44,14 @@ const errors = {
     code: 'EMAIL_NOT_CONFIRMED',
     message: 'Please confirm your email to login.'
   },
+  EMAIL_ALREADY_CONFIRMED: {
+    code: 'EMAIL_ALREADY_CONFIRMED',
+    message: 'Your email address has already been verified.'
+  },
+  BAD_CONFIRM_TOKEN: {
+    code: 'BAD_CONFIRM_TOKEN',
+    message: 'The confirmation token is either invalid or has expired.'
+  },
   NOT_FOUND: {
     code: 'NOT_FOUND',
     message: 'The requested URL was not found.'
