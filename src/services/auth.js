@@ -1,6 +1,7 @@
 const tokenService = require('~/services/token')
 const emailService = require('~/services/email')
 const { getUserByEmail, createUser, privateUpdateUser, getUserById } = require('~/services/user')
+const User = require('~/models/user')
 const { createError } = require('~/utils/errorsHelper')
 const {
   EMAIL_NOT_CONFIRMED,
@@ -84,7 +85,13 @@ const authService = {
       throw createError(400, BAD_REFRESH_TOKEN)
     }
 
-    const { _id, lastLoginAs, isFirstLogin } = await getUserById(tokenData.id)
+    const user = await getUserById(tokenData.id)
+
+    if (!user) {
+      throw createError(400, BAD_REFRESH_TOKEN)
+    }
+
+    const { _id, lastLoginAs, isFirstLogin } = user
 
     const tokens = tokenService.generateTokens({ id: _id, role: lastLoginAs, isFirstLogin })
     await tokenService.saveToken(_id, tokens.refreshToken, REFRESH_TOKEN)
@@ -115,23 +122,34 @@ const authService = {
     }
 
     const { id: userId } = tokenData
-    const user = await getUserById(userId)
-
-    if (!user) {
-      throw createError(404, USER_NOT_FOUND)
-    }
-
-    if (user.isEmailConfirmed) {
-      throw createError(400, EMAIL_ALREADY_CONFIRMED)
-    }
-
     const tokenFromDB = await tokenService.findToken(confirmToken, CONFIRM_TOKEN)
 
     if (!tokenFromDB) {
       throw createError(400, BAD_CONFIRM_TOKEN)
     }
 
-    await privateUpdateUser(userId, { isEmailConfirmed: true })
+    const updatedUser = await User.findOneAndUpdate(
+      {
+        _id: userId,
+        isEmailConfirmed: false
+      },
+      {
+        $set: { isEmailConfirmed: true }
+      },
+      {
+        new: true
+      }
+    ).exec()
+
+    if (!updatedUser) {
+      const user = await getUserById(userId)
+
+      if (!user) {
+        throw createError(404, USER_NOT_FOUND)
+      }
+
+      throw createError(400, EMAIL_ALREADY_CONFIRMED)
+    }
     await tokenService.removeConfirmToken(confirmToken)
   },
 
