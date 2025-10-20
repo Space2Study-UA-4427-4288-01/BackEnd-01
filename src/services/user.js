@@ -5,7 +5,7 @@ const { DOCUMENT_NOT_FOUND, ALREADY_REGISTERED } = require('~/consts/errors')
 const filterAllowedFields = require('~/utils/filterAllowedFields')
 const { allowedUserFieldsForUpdate } = require('~/validation/services/user')
 
-const SALT_ROUNDS = 10
+const { SALT_ROUNDS } = require('~/consts/auth')
 
 const userService = {
   getUsers: async ({ match, sort, skip, limit }) => {

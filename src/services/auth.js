@@ -17,7 +17,8 @@ const {
 } = require('~/consts/errors')
 const emailSubject = require('~/consts/emailSubject')
 const {
-  tokenNames: { REFRESH_TOKEN, RESET_TOKEN, CONFIRM_TOKEN }
+  tokenNames: { REFRESH_TOKEN, RESET_TOKEN, CONFIRM_TOKEN },
+  SALT_ROUNDS
 } = require('~/consts/auth')
 const { OAuth2Client } = require('google-auth-library')
 const {
@@ -162,7 +163,9 @@ const authService = {
     }
 
     const { id: userId, firstName, email } = tokenData
-    await privateUpdateUser(userId, { password })
+
+    const passwordHash = await bcrypt.hash(password, SALT_ROUNDS)
+    await privateUpdateUser(userId, { password: passwordHash })
 
     await tokenService.removeResetToken(userId)
 
