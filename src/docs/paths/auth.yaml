@@ -92,6 +92,29 @@
             schema:
               $ref: '#/components/schemas/ErrorResponse'
 
+/auth/confirm/{token}:
+  get:
+    summary: Confirm email
+    description: Confirms user's email address using confirmation token sent during registration
+    tags:
+      - Authentication
+    parameters:
+      - in: path
+        name: token
+        required: true
+        schema:
+          type: string
+        description: Email confirmation token from registration email
+    responses:
+      '204':
+        description: Email confirmed successfully
+      '400':
+        description: Invalid or expired confirmation token
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ErrorResponse'
+
 /auth/logout:
   post:
     summary: User logout

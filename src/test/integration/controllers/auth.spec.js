@@ -15,7 +15,6 @@ const tokenService = require('~/services/token')
 const Token = require('~/models/token')
 const { expectError, genEmail, genValidPassword, genUUID } = require('~/test/helpers')
 
-
 describe('Auth controller', () => {
   let app, server, signupResponse
 
@@ -313,6 +312,118 @@ describe('Auth controller', () => {
       const response = await app.post('/auth/google-auth').send({})
       expect(response.status).toBe(422)
       expect(response.body.error).toBe('MISSING_TOKEN')
+    })
+  })
+
+  describe('Confirm Email endpoint', () => {
+    it('should confirm email with valid token', async () => {
+      const email = genEmail('confirm')
+      const password = genValidPassword()
+
+      const signup = await app.post('/auth/signup').send({
+        role: 'student',
+        firstName: 'Confirm',
+        lastName: 'Test',
+        email,
+        password
+      })
+
+      expect(signup.status).toBe(201)
+
+      const { userId } = signup.body
+      const tokenDoc = await Token.findOne({ user: userId }).exec()
+      const confirmToken = tokenDoc.confirmToken
+      expect(confirmToken).toBeDefined()
+
+      let user = await User.findById(userId).select('+isEmailConfirmed').exec()
+      expect(user.isEmailConfirmed).toBe(false)
+
+      const confirmRes = await app.get(`/auth/confirm/${confirmToken}`)
+      expect(confirmRes.status).toBe(204)
+
+      user = await User.findById(userId).select('+isEmailConfirmed').exec()
+      expect(user.isEmailConfirmed).toBe(true)
+
+      const token = await Token.findOne({ confirmToken }).exec()
+      expect(token).toBeNull()
+    })
+
+    it('should return 400 for invalid confirm token', async () => {
+      const response = await app.get('/auth/confirm/invalid-token-here')
+      expectError(400, errors.BAD_CONFIRM_TOKEN, response)
+    })
+
+    it('should block login before email confirmation', async () => {
+      const email = genEmail('blocked')
+      const password = genValidPassword()
+
+      const signup = await app.post('/auth/signup').send({
+        role: 'student',
+        firstName: 'Blocked',
+        lastName: 'Login',
+        email,
+        password
+      })
+
+      expect(signup.status).toBe(201)
+
+      const loginRes = await app.post('/auth/login').send({ email, password })
+      expectError(401, errors.EMAIL_NOT_CONFIRMED, loginRes)
+    })
+
+    it('should return 400 for already confirmed email', async () => {
+      const email = genEmail('alreadyconfirmed')
+      const password = genValidPassword()
+
+      const signup = await app.post('/auth/signup').send({
+        role: 'student',
+        firstName: 'Already',
+        lastName: 'Confirmed',
+        email,
+        password
+      })
+
+      expect(signup.status).toBe(201)
+
+      const tokenDoc = await Token.findOne({ user: signup.body.userId }).exec()
+      const confirmToken = tokenDoc.confirmToken
+      const firstConfirm = await app.get(`/auth/confirm/${confirmToken}`)
+
+      expect(firstConfirm.status).toBe(204)
+
+      const newToken = tokenService.generateConfirmToken({
+        id: signup.body.userId,
+        role: 'student'
+      })
+      await tokenService.saveToken(signup.body.userId, newToken, 'confirmToken')
+
+      const secondConfirm = await app.get(`/auth/confirm/${newToken}`)
+      expectError(400, errors.EMAIL_ALREADY_CONFIRMED, secondConfirm)
+    })
+
+    it('should allow login after email confirmation', async () => {
+      const email = genEmail('allowed')
+      const password = genValidPassword()
+
+      const signup = await app.post('/auth/signup').send({
+        role: 'student',
+        firstName: 'Allowed',
+        lastName: 'Login',
+        email,
+        password
+      })
+
+      expect(signup.status).toBe(201)
+
+      const tokenDoc = await Token.findOne({ user: signup.body.userId }).exec()
+      const confirmToken = tokenDoc.confirmToken
+
+      const confirmRes = await app.get(`/auth/confirm/${confirmToken}`)
+      expect(confirmRes.status).toBe(204)
+
+      const loginRes = await app.post('/auth/login').send({ email, password })
+      expect(loginRes.status).toBe(200)
+      expect(loginRes.body).toHaveProperty('accessToken')
     })
   })
 

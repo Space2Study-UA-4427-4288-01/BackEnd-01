@@ -1,6 +1,7 @@
 const tokenService = require('~/services/token')
 const emailService = require('~/services/email')
 const { getUserByEmail, createUser, privateUpdateUser, getUserById } = require('~/services/user')
+const User = require('~/models/user')
 const { createError } = require('~/utils/errorsHelper')
 const {
   EMAIL_NOT_CONFIRMED,
@@ -10,7 +11,9 @@ const {
   USER_NOT_FOUND,
   INVALID_TOKEN_ISSUER,
   EMAIL_NOT_VERIFIED,
-  MISSING_SUB_CLAIM
+  MISSING_SUB_CLAIM,
+  EMAIL_ALREADY_CONFIRMED,
+  BAD_CONFIRM_TOKEN
 } = require('~/consts/errors')
 const emailSubject = require('~/consts/emailSubject')
 const {
@@ -31,6 +34,7 @@ const authService = {
     const confirmToken = tokenService.generateConfirmToken({ id: user._id, role })
     await tokenService.saveToken(user._id, confirmToken, CONFIRM_TOKEN)
     await emailService.sendEmail(email, emailSubject.EMAIL_CONFIRMATION, language, { confirmToken, email, firstName })
+
     return {
       userId: user._id,
       userEmail: user.email
@@ -81,7 +85,13 @@ const authService = {
       throw createError(400, BAD_REFRESH_TOKEN)
     }
 
-    const { _id, lastLoginAs, isFirstLogin } = await getUserById(tokenData.id)
+    const user = await getUserById(tokenData.id)
+
+    if (!user) {
+      throw createError(400, BAD_REFRESH_TOKEN)
+    }
+
+    const { _id, lastLoginAs, isFirstLogin } = user
 
     const tokens = tokenService.generateTokens({ id: _id, role: lastLoginAs, isFirstLogin })
     await tokenService.saveToken(_id, tokens.refreshToken, REFRESH_TOKEN)
@@ -102,6 +112,45 @@ const authService = {
     await tokenService.saveToken(_id, resetToken, RESET_TOKEN)
 
     await emailService.sendEmail(email, emailSubject.RESET_PASSWORD, language, { resetToken, email, firstName })
+  },
+
+  confirmEmail: async (confirmToken, _language) => {
+    const tokenData = tokenService.validateConfirmToken(confirmToken)
+
+    if (!tokenData) {
+      throw createError(400, BAD_CONFIRM_TOKEN)
+    }
+
+    const { id: userId } = tokenData
+    const tokenFromDB = await tokenService.findToken(confirmToken, CONFIRM_TOKEN)
+
+    if (!tokenFromDB) {
+      throw createError(400, BAD_CONFIRM_TOKEN)
+    }
+
+    const updatedUser = await User.findOneAndUpdate(
+      {
+        _id: userId,
+        isEmailConfirmed: false
+      },
+      {
+        $set: { isEmailConfirmed: true }
+      },
+      {
+        new: true
+      }
+    ).exec()
+
+    if (!updatedUser) {
+      const user = await getUserById(userId)
+
+      if (!user) {
+        throw createError(404, USER_NOT_FOUND)
+      }
+
+      throw createError(400, EMAIL_ALREADY_CONFIRMED)
+    }
+    await tokenService.removeConfirmToken(confirmToken)
   },
 
   updatePassword: async (resetToken, password, language) => {
