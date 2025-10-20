@@ -14,7 +14,7 @@ const {
   BAD_CONFIRM_TOKEN,
   EMAIL_ALREADY_CONFIRMED
 } = require('~/consts/errors')
-const { roles } = require('~/consts/auth')
+const { roles, SALT_ROUNDS } = require('~/consts/auth')
 
 const createTestUser = async (overrides = {}) => {
   const base = {
@@ -70,7 +70,7 @@ describe('authService integration', () => {
 
       await createTestUser({
         email,
-        password: await require('bcrypt').hash(password, 10),
+        password: await require('bcrypt').hash(password, SALT_ROUNDS),
         isEmailConfirmed: true
       })
 
@@ -88,7 +88,7 @@ describe('authService integration', () => {
 
       await createTestUser({
         email,
-        password: await require('bcrypt').hash(password, 10),
+        password: await require('bcrypt').hash(password, SALT_ROUNDS),
         isEmailConfirmed: true
       })
 
@@ -104,7 +104,7 @@ describe('authService integration', () => {
 
       await createTestUser({
         email,
-        password: await require('bcrypt').hash(password, 10),
+        password: await require('bcrypt').hash(password, SALT_ROUNDS),
         isEmailConfirmed: false
       })
 
@@ -294,7 +294,7 @@ describe('authService integration', () => {
       await createTestUser({
         email,
         isEmailConfirmed: true,
-        password: await require('bcrypt').hash(genValidPassword(), 10)
+        password: await require('bcrypt').hash(genValidPassword(), SALT_ROUNDS)
       })
 
       const spy = jest.spyOn(OAuth2Client.prototype, 'verifyIdToken').mockResolvedValue({
